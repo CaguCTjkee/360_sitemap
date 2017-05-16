@@ -9,18 +9,32 @@
 class Sitemap
 {
     /**
-     * @var string
-     */
-    private $list;
-    /**
      * @var array
      */
     public $sitemap_array;
+    /**
+     * @var string
+     */
     private $sitemap_filename = 'sitemap.xml';
+    /**
+     * @var string
+     */
     private $posts = 'posts';
+    /**
+     * @var string
+     */
     private $catalog = 'catalog';
+    /**
+     * @var string
+     */
     private $orders = 'orders';
+    /**
+     * @var string
+     */
     private $pano = 'pano';
+    /**
+     * @var string
+     */
     private $ads = 'ads';
 
     /**
@@ -28,6 +42,7 @@ class Sitemap
      */
     function __construct()
     {
+        // Массив доступных модулей
         $this->sitemap_array = array(
             $this->posts,
             $this->catalog,
@@ -39,45 +54,70 @@ class Sitemap
 
     /**
      * @param $home
+     * Достаем список ключевых карт сайта (https://360.zp.ua/sitemap.xml)
      *
      * @return mixed
      */
     public function getSitemapList($home)
     {
-        foreach( $this->sitemap_array as $item )
-        {
-            $this->list[$item] = array(
-                'loc' => $home . '/' . $this->sitemap_filename . '?type=' . $item,
-                'lastmod' => $this->getLastmodByMod($item),
-            );
-        }
-
-        return $this->list;
-    }
-
-    public function getList($mod)
-    {
         $return_array = array();
 
-        $and = $this->get_and($mod);
-
-        $list = mysqlRow(DB_PREFIX . $mod, $and . ' ORDER by id DESC');
-        foreach( $list as $id => $item )
+        // Проходимся по массиву модулей
+        foreach( $this->sitemap_array as $item )
         {
-            $return_array[$id] = array(
-                'lastmod' => $this->date($item),
-                'loc' => $this->get_loc($mod, $item),
+            // Собираем массив для вывода через шаблон. Ссылка, дата последнего изменения, приоритет
+            $return_array[$item] = array(
+                'loc' => $home . '/' . $this->sitemap_filename . '?type=' . $item,
+                'lastmod' => $this->getLastmodByName($item),
+                'priority' => 0.8,
             );
         }
 
         return $return_array;
     }
 
+    /**
+     * @param $mod
+     * Подготовка списка для карты <url>list</url>
+     *
+     * @return array
+     */
+    public function getList($mod)
+    {
+        $return_array = array();
+
+        $and = $this->get_and($mod); // меняем sql запрос в зависимости от модуля
+
+        $list = mysqlRow(DB_PREFIX . $mod, $and . ' ORDER by id DESC');
+        foreach( $list as $id => $item )
+        {
+            // Собираем массив для вывода через шаблон. Ссылка, дата последнего изменения, приоритет
+            $return_array[$id] = array(
+                'loc' => $this->get_loc($mod, $item), // меняем ссылку на элемент в зависимости от модуля
+                'lastmod' => $this->date($item), // выставляем дату последнего изменения
+                'priority' => 0.8,
+            );
+        }
+
+        return $return_array;
+    }
+
+    /**
+     * Выводим категории из всех модулей (https://360.zp.ua/sitemap.xml?type=other)
+     * @return array
+     */
     public function getOtherList()
     {
+        // вывод списка категорий
         return array_merge($this->getCategory($this->catalog . '_cat'), $this->getCategory($this->posts . '_cat'), $this->getCategory($this->pano . '_cat'), $this->getCategory($this->ads . '_cat'));
     }
 
+    /**
+     * @param $mod
+     * Подготовка отдельной категории
+     *
+     * @return array
+     */
     private function getCategory($mod)
     {
         $return_array = array();
@@ -86,9 +126,10 @@ class Sitemap
 
         foreach( $sql as $item )
         {
+            // Собираем массив для вывода через шаблон. Ссылка, дата последнего изменения, приоритет
             $return_array[] = array(
-                'lastmod' => $this->date($item),
                 'loc' => $this->get_loc($mod, $item),
+                'lastmod' => $this->date($item),
                 'priority' => 0.6,
             );
         }
@@ -96,6 +137,12 @@ class Sitemap
         return $return_array;
     }
 
+    /**
+     * @param $item
+     * Проверяем наличие даты изменения и выводим в формате Y-m-d
+     *
+     * @return false|string
+     */
     private function date($item)
     {
         if( !empty($item['edit_date']) && $item['edit_date'] !== '0000-00-00 00:00:00' )
@@ -106,10 +153,18 @@ class Sitemap
             return date("Y-m-d");
     }
 
+    /**
+     * @param $mod
+     * @param $item
+     * Выводит ссылку на элемент
+     *
+     * @return string
+     */
     private function get_loc($mod, $item)
     {
-        global $set; // site preference
+        global $set; // вытаскиваем настройки сайта, чтоб вытащить ссылку на главную страницу ($set['host'])
 
+        // Дефолт
         $return = '/';
 
         if( $mod === $this->posts )
@@ -148,8 +203,15 @@ class Sitemap
         return $set['host'] . htmlspecialchars($return);
     }
 
+    /**
+     * @param $mod
+     * Меняем sql запрос в зависимости от модуля
+     *
+     * @return string
+     */
     private function get_and($mod)
     {
+        // Дефолт (большинство модулей)
         $return = 'publish = 1';
 
         if( $mod === $this->ads )
@@ -166,10 +228,11 @@ class Sitemap
 
     /**
      * @param $mod
+     * Вывод даты последних изменений в модуле
      *
      * @return false|string
      */
-    private function getLastmodByMod($mod)
+    private function getLastmodByName($mod)
     {
         $query = superQuery(DB_PREFIX . $mod, '1=1 ORDER BY date DESC LIMIT 0,1');
 
