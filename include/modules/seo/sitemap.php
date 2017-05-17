@@ -34,11 +34,11 @@ $data = array();
 // get sitemap list for index sitemap
 if( $_GET['type'] === 'index' )
 {
-    $data['list'] = $sitemap->getSitemapList($set['host']);
+    $data['list'] = $sitemap->getSitemapList();
 }
 elseif( $_GET['type'] === 'other' )
 {
-    $data['list'] = $sitemap->getOtherList($set['host']);
+    $data['list'] = $sitemap->getOtherList();
 }
 elseif( array_search($_GET['type'], $sitemap->sitemap_array) !== false )
 {

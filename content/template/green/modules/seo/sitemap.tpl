@@ -6,7 +6,7 @@
 
     {{foreach from=$data.list item=list}}
         <sitemap>
-            <loc>{{$list.loc}}</loc>
+            <loc>{{$set.host}}{{$list.loc}}</loc>
             <lastmod>{{$list.lastmod}}</lastmod>
         </sitemap>
     {{/foreach}}
@@ -24,7 +24,7 @@
 
     {{foreach from=$data.list item=list}}
         <url>
-            <loc>{{$list.loc}}</loc>
+            <loc>{{$set.host}}{{$list.loc}}</loc>
             <lastmod>{{$list.lastmod}}</lastmod>
             <priority>{{if $list.priority}}{{$list.priority}}{{else}}0.8{{/if}}</priority>
         </url>
